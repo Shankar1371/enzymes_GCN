@@ -1,26 +1,33 @@
-# main.py — ENZYMES graph classification with a GCN (PyTorch Geometric)
-# - Uses your local raw ENZYMES files under data/ENZYMES/
-# - Copies them into data/ENZYMES/ENZYMES/raw/ (PyG expected layout)
-# - Ensures node features exist even if the raw dump lacks float x
-# - Trains with early stopping; saves artifacts/
-
 import os
+#we have imported the filesystem paths and folders
 import shutil
+#this above line helps in compying or removing directories
 import argparse
+#is used for the parsing of command line flags
 from typing import Tuple, Iterable
 
+
 import torch
+#the above line is used for the pytorch library that helps in tensors , device ,autograph etc
 from torch import nn
 from torch.optim import Adam
+#used for the optimization
 from torch_geometric.datasets import TUDataset
+#this is used for the loads for ENZYMES(from the TU graph repo)
 from torch_geometric.loader import DataLoader
+#minibatches of graphs
 from torch_geometric.transforms import NormalizeFeatures
 
 from models import GCNGraphClassifier
+#imports the GCN classifier
+#that is a deep learning model that extends convolution operations from images to graph-structured data, learning  node features by aggregating information  from their neighbors.
 from utils import set_seed
+#the above line helps in locating the
 
 # Correct, consistent device name
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#for this operation we use the GPU if that is available and else we choose cpu
+
 
 # Filenames typically present in the TU ENZYMES raw package
 REQUIRED_PREFIX = "ENZYMES_"
@@ -32,7 +39,7 @@ RAW_FILENAMES: Iterable[str] = (
     "ENZYMES_node_attributes.txt",
     "ENZYMES_edge_labels.txt",
 )
-
+#Raw file handling thhat is so PyG that uses the local dataset that i have provided
 def _copy_raw_if_found(src_dir: str, root: str, name: str = "ENZYMES") -> None:
     """
     If the user has ENZYMES_*.txt directly under `src_dir` (your case),
@@ -40,7 +47,7 @@ def _copy_raw_if_found(src_dir: str, root: str, name: str = "ENZYMES") -> None:
     Example: src_dir="data/ENZYMES" -> copies into "data/ENZYMES/ENZYMES/raw/"
     """
     if not os.path.isdir(src_dir):
-        return  # nothing to do
+        return  #  if the folder does not exist nothing to do
 
     dataset_dir = os.path.join(root, name)         # e.g., data/ENZYMES/ENZYMES
     raw_dir = os.path.join(dataset_dir, "raw")     # e.g., data/ENZYMES/ENZYMES/raw
@@ -60,8 +67,11 @@ def _copy_raw_if_found(src_dir: str, root: str, name: str = "ENZYMES") -> None:
         if os.path.isdir(processed_dir) and os.listdir(processed_dir):
             print("NOTE: Removing existing processed files to re-process from your local raw files...")
             shutil.rmtree(processed_dir)
+    #if we found any files we change the rae files and there were old processed tensors that delete  them so Pyg rebuild clenly
+
 
 def split_dataset(dataset, train_ratio=0.8, val_ratio=0.1, seed=42) -> Tuple[torch.utils.data.Dataset, ...]:
+    #we split the data set using this funtion
     """Random 80/10/10 split with fixed seed."""
     g = torch.Generator().manual_seed(seed)
     n = len(dataset)
@@ -69,6 +79,7 @@ def split_dataset(dataset, train_ratio=0.8, val_ratio=0.1, seed=42) -> Tuple[tor
     n_val = int(n * val_ratio)
     n_test = n - n_train - n_val
     return torch.utils.data.random_split(dataset, [n_train, n_val, n_test], generator=g)
+#the above line computes sizes and call the pyto+orch's random_split reproducibly
 
 @torch.no_grad()
 def evaluate(model, loader, loss_fn):
@@ -86,7 +97,7 @@ def evaluate(model, loader, loss_fn):
     return total_loss / total, correct / total
 
 def train_one_epoch(model, loader, optimizer, loss_fn):
-    """One training epoch."""
+    """One training epoch. or called as train loop"""
     model.train()
     total_loss = 0.0
     for data in loader:
